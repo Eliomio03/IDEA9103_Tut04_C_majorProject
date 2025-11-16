@@ -387,7 +387,7 @@ function setup() {
   rectMode(CORNER);
   noStroke();
   
-  // 创建纹理
+  // CreatTextures
   setupTextures();
   
   mondrian = new Mondrian();
