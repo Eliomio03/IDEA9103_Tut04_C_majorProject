@@ -9,9 +9,49 @@ const RED    = "#d1372a";
 const BLUE   = "#2956a4";
 const GREY   = "#d5cfc5";
 
+// oil and  crayon
+let oilPaintGraphics;
+let crayonGraphics;
 
-let particles = [];
-let glowGraphics;
+function setupTextures() {
+  createOilPaintTexture();
+  createCrayonTexture();
+}
+
+function createOilPaintTexture() {
+  // oil blue and red rect
+  oilPaintGraphics = createGraphics(100, 100);
+  oilPaintGraphics.noStroke();
+  
+  // oil color
+  for (let i = 0; i < 120; i++) { 
+    const x = random(100);
+    const y = random(100);
+    const size = random(2, 6); 
+    const alpha = random(15, 35); 
+    
+    oilPaintGraphics.fill(255, 255, 255, alpha);
+    oilPaintGraphics.ellipse(x, y, size, size * 0.7);
+  }
+}
+
+function createCrayonTexture() {
+  // yellow rect
+  crayonGraphics = createGraphics(150, 150);
+  crayonGraphics.noStroke();
+  
+  // crayon
+  for (let i = 0; i < 600; i++) {
+    const x = random(150);
+    const y = random(150);
+    const size = random(2, 5);
+    const alpha = random(15, 35);
+    const brightness = random(220, 255);
+    
+    crayonGraphics.fill(brightness, brightness, 180, alpha);
+    crayonGraphics.rect(x, y, size, size);
+  }
+}
 
 // lines and blocks
 
@@ -125,49 +165,11 @@ const GREY_DOTS = [
   [3,2],[10,2],[10,6],[24,6],[17,13],[15,13],[6,17]
 ];
 
-// Particles
-class Particle {
-  constructor(x, y, color) {
-    this.x = x;
-    this.y = y;
-    this.color = color;
-    this.size = random(3, 8);
-    this.speedX = random(-1, 1);
-    this.speedY = random(-1, 1);
-    this.alpha = random(100, 200);
-  }
-  
-  update() {
-    this.x += this.speedX;
-    this.y += this.speedY;
-    
-    // Check
-    if (this.x < 0 || this.x > width) this.speedX *= -1;
-    if (this.y < 0 || this.y > height) this.speedY *= -1;
-  }
-  
-  display() {
-    push();
-    fill(red(this.color), green(this.color), blue(this.color), this.alpha);
-    noStroke();
-    
-    // Light Particles
-    drawingContext.shadowBlur = 15;
-    drawingContext.shadowColor = this.color;
-    
-    ellipse(this.x, this.y, this.size);
-    
-    drawingContext.shadowBlur = 0;
-    pop();
-  }
-}
-
-// Picture
+// class
 class Mondrian {
   constructor() {
     this.rects = [];
     this.build();
-    this.createParticles();
   }
 
   addRect(gx, gy, gw, gh, color) {
@@ -192,92 +194,139 @@ class Mondrian {
     this.buildGreys();
   }
 
-  //Creat Particles
-  createParticles() {
-    particles = [];
-    
-    // RedRect
-    for (const r of this.rects) {
-      if (r.color === RED || r.color === BLUE) {
-        this.addParticlesForBlock(r);
-      }
-    }
-  }
-  
-  addParticlesForBlock(block) {
-    const x = block.gx * UNIT;
-    const y = block.gy * UNIT;
-    const w = block.gw * UNIT;
-    const h = block.gh * UNIT;
-    
-    // Creat particles
-    const particleCount = max(8, (w * h) / 50);
-    
-    for (let i = 0; i < particleCount; i++) {
-      const particleX = x + random(w);
-      const particleY = y + random(h);
-      particles.push(new Particle(particleX, particleY, block.color));
-    }
-  }
-
   draw() {
-    background(BG);
-    
-    //  Light Background
-    this.drawGlowBackground();
-    
-    // Draw Rect
+    // Draw rect
     for (const r of this.rects) {
       fill(r.color);
       rect(r.gx * UNIT, r.gy * UNIT, r.gw * UNIT, r.gh * UNIT);
     }
     
-    // Draw partcles
-    this.drawParticles();
-  }
-
-  // Light Background
-  drawGlowBackground() {
-    push();
-    
+    // color
     for (const r of this.rects) {
       if (r.color === RED || r.color === BLUE) {
-        const x = r.gx * UNIT;
-        const y = r.gy * UNIT;
-        const w = r.gw * UNIT;
-        const h = r.gh * UNIT;
-        
-        // More Light
-        for (let i = 0; i < 3; i++) {
-          const glowSize = i * 10;
-          const alpha = map(i, 0, 2, 60, 10);
-          
-          drawingContext.shadowBlur = 20 + i * 10;
-          drawingContext.shadowColor = color(
-            red(r.color), 
-            green(r.color), 
-            blue(r.color), 
-            alpha
-          );
-          
-          fill(r.color);
-          rect(x - glowSize/2, y - glowSize/2, w + glowSize, h + glowSize);
-        }
+        this.drawOilPaintEffect(r);
+      } else if (r.color === YELLOW) {
+        this.drawCrayonEffect(r);
       }
     }
-    
-    drawingContext.shadowBlur = 0;
-    pop();
   }
 
-  // 绘制粒子
-  drawParticles() {
-    push();
-    blendMode(ADD);
+  // oil red and blue rect
+  drawOilPaintEffect(rect) {
+    const x = rect.gx * UNIT;
+    const y = rect.gy * UNIT;
+    const w = rect.gw * UNIT;
+    const h = rect.gh * UNIT;
     
-    for (const particle of particles) {
-      particle.update();
-      particle.display();
+    push();
+    
+    // Soft_light
+    blendMode(SOFT_LIGHT);
+    
+    // const 
+    const scaleX = w / oilPaintGraphics.width;
+    const scaleY = h / oilPaintGraphics.height;
+    
+    // Single-layer texture
+    push();
+    translate(x, y);
+    scale(scaleX, scaleY);
+    image(oilPaintGraphics, 0, 0);
+    pop();
+    
+    pop();
+    
+    
+    drawingContext.shadowBlur = 8;
+    drawingContext.shadowColor = color(red(rect.color), green(rect.color), blue(rect.color), 60);
+    
+   
+    this.drawOilBrushStrokes(x, y, w, h, rect.color);
+    
+    drawingContext.shadowBlur = 0;
+  }
+
+  // Draw oil color
+  drawOilBrushStrokes(x, y, w, h, color) {
+    const strokeCount = max(2, (w * h) / 200); 
+    
+    for (let i = 0; i < strokeCount; i++) {
+      const strokeX = x + random(w);
+      const strokeY = y + random(h);
+      const strokeW = random(3, 8); 
+      const strokeH = random(2, 4);
+      const angle = random(PI);
+      const alpha = random(20, 40); 
+      
+      push();
+      translate(strokeX, strokeY);
+      rotate(angle);
+      
+      const r = red(color);
+      const g = green(color);
+      const b = blue(color);
+      const variation = random(-10, 10); 
+      
+      fill(
+        constrain(r + variation, 0, 255),
+        constrain(g + variation, 0, 255),
+        constrain(b + variation, 0, 255),
+        alpha
+      );
+      
+      noStroke();
+      ellipse(0, 0, strokeW, strokeH);
+      pop();
+    }
+  }
+
+  // Yellow rect 
+  drawCrayonEffect(rect) {
+    const x = rect.gx * UNIT;
+    const y = rect.gy * UNIT;
+    const w = rect.gw * UNIT;
+    const h = rect.gh * UNIT;
+    
+    push();
+    
+    // HARD_LIGHT
+    blendMode(HARD_LIGHT);
+    
+    // Single-layer texture
+    const scaleX = w / crayonGraphics.width;
+    const scaleY = h / crayonGraphics.height;
+    
+    // Single-layer texture
+    push();
+    translate(x, y);
+    scale(scaleX, scaleY);
+    image(crayonGraphics, 0, 0);
+    pop();
+    
+    pop();
+    
+    // DrawCrayonStreaks
+    this.drawCrayonStreaks(x, y, w, h);
+  }
+
+  // DrawCrayonStreaks
+  drawCrayonStreaks(x, y, w, h) {
+    
+    if (w < 8 || h < 8) return;
+    
+    const streakCount = max(3, w / 8);
+    
+    push();
+    noStroke();
+    blendMode(HARD_LIGHT);
+    
+    for (let i = 0; i < streakCount; i++) {
+      const streakX = x + random(w);
+      const streakWidth = random(3, 6);
+      const alpha = random(15, 30);
+      
+      fill(255, 245, 160, alpha);
+      rect(streakX, y, streakWidth, h);
     }
     
     pop();
@@ -337,11 +386,16 @@ function setup() {
   resizeCanvasCalc();
   rectMode(CORNER);
   noStroke();
-  mondrian = new Mondrian();
   
+  // 创建纹理
+  setupTextures();
+  
+  mondrian = new Mondrian();
+  noLoop();
 }
 
 function draw() {
+  background(BG);
   mondrian.draw();
 }
 
