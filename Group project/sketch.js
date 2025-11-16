@@ -9,6 +9,10 @@ const RED    = "#d1372a";
 const BLUE   = "#2956a4";
 const GREY   = "#d5cfc5";
 
+
+let particles = [];
+let glowGraphics;
+
 // lines and blocks
 
 // YELLOW_VERTICAL_LINES [x, y, w, h]
@@ -121,27 +125,59 @@ const GREY_DOTS = [
   [3,2],[10,2],[10,6],[24,6],[17,13],[15,13],[6,17]
 ];
 
+// Particles
+class Particle {
+  constructor(x, y, color) {
+    this.x = x;
+    this.y = y;
+    this.color = color;
+    this.size = random(3, 8);
+    this.speedX = random(-1, 1);
+    this.speedY = random(-1, 1);
+    this.alpha = random(100, 200);
+  }
+  
+  update() {
+    this.x += this.speedX;
+    this.y += this.speedY;
+    
+    // Check
+    if (this.x < 0 || this.x > width) this.speedX *= -1;
+    if (this.y < 0 || this.y > height) this.speedY *= -1;
+  }
+  
+  display() {
+    push();
+    fill(red(this.color), green(this.color), blue(this.color), this.alpha);
+    noStroke();
+    
+    // Light Particles
+    drawingContext.shadowBlur = 15;
+    drawingContext.shadowColor = this.color;
+    
+    ellipse(this.x, this.y, this.size);
+    
+    drawingContext.shadowBlur = 0;
+    pop();
+  }
+}
 
-
-
-// class
+// Picture
 class Mondrian {
   constructor() {
     this.rects = [];
     this.build();
+    this.createParticles();
   }
-
 
   addRect(gx, gy, gw, gh, color) {
     this.rects.push({ gx, gy, gw, gh, color });
   }
 
-  
   addBatch(list, color) {
     list.forEach(([x,y,w,h]) => this.addRect(x, y, w, h, color));
   }
 
-  
   addOffsetPoints(baseX, baseY, points) {
     points.forEach(([dx,dy,color]) => {
       this.addRect(baseX + dx, baseY + dy, 1, 1, color);
@@ -156,11 +192,95 @@ class Mondrian {
     this.buildGreys();
   }
 
+  //Creat Particles
+  createParticles() {
+    particles = [];
+    
+    // RedRect
+    for (const r of this.rects) {
+      if (r.color === RED || r.color === BLUE) {
+        this.addParticlesForBlock(r);
+      }
+    }
+  }
+  
+  addParticlesForBlock(block) {
+    const x = block.gx * UNIT;
+    const y = block.gy * UNIT;
+    const w = block.gw * UNIT;
+    const h = block.gh * UNIT;
+    
+    // Creat particles
+    const particleCount = max(8, (w * h) / 50);
+    
+    for (let i = 0; i < particleCount; i++) {
+      const particleX = x + random(w);
+      const particleY = y + random(h);
+      particles.push(new Particle(particleX, particleY, block.color));
+    }
+  }
+
   draw() {
+    background(BG);
+    
+    //  Light Background
+    this.drawGlowBackground();
+    
+    // Draw Rect
     for (const r of this.rects) {
       fill(r.color);
       rect(r.gx * UNIT, r.gy * UNIT, r.gw * UNIT, r.gh * UNIT);
     }
+    
+    // Draw partcles
+    this.drawParticles();
+  }
+
+  // Light Background
+  drawGlowBackground() {
+    push();
+    
+    for (const r of this.rects) {
+      if (r.color === RED || r.color === BLUE) {
+        const x = r.gx * UNIT;
+        const y = r.gy * UNIT;
+        const w = r.gw * UNIT;
+        const h = r.gh * UNIT;
+        
+        // More Light
+        for (let i = 0; i < 3; i++) {
+          const glowSize = i * 10;
+          const alpha = map(i, 0, 2, 60, 10);
+          
+          drawingContext.shadowBlur = 20 + i * 10;
+          drawingContext.shadowColor = color(
+            red(r.color), 
+            green(r.color), 
+            blue(r.color), 
+            alpha
+          );
+          
+          fill(r.color);
+          rect(x - glowSize/2, y - glowSize/2, w + glowSize, h + glowSize);
+        }
+      }
+    }
+    
+    drawingContext.shadowBlur = 0;
+    pop();
+  }
+
+  // 绘制粒子
+  drawParticles() {
+    push();
+    blendMode(ADD);
+    
+    for (const particle of particles) {
+      particle.update();
+      particle.display();
+    }
+    
+    pop();
   }
 
   // yellow lines
@@ -209,28 +329,21 @@ class Mondrian {
   }
 }
 
-
-
-
-
 //main
-
 let mondrian;
 
 function setup() {
+  createCanvas(800, 800);
   resizeCanvasCalc();
   rectMode(CORNER);
   noStroke();
   mondrian = new Mondrian();
-  noLoop();
+  
 }
 
 function draw() {
-  background(BG);
   mondrian.draw();
 }
-
-
 
 // Adapt to the window size
 function windowResized() {
